@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class NetflowCollector:
-    def __init__(self, host='0.0.0.0', port=9995):
+    def __init__(self, host='0.0.0.0', port=2055):
         self.host = host
         self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -46,24 +46,32 @@ class NetflowCollector:
     def _process_packet(self, data, addr):
         """Process a single Netflow packet"""
         try:
-            # Netflow v5 header (24 bytes)
-            version, count, sys_uptime, unix_secs, unix_nsecs, flow_sequence, engine_type, engine_id, sampling_interval = struct.unpack('!HHIIIIIBB', data[:24])
+            # Netflow v5 header (26 bytes)
+            # Check if we have enough data for the header
+            if len(data) < 26:
+                logger.warning(f"Packet too small for Netflow header: {len(data)} bytes")
+                return
+                
+            version, count, sys_uptime, unix_secs, unix_nsecs, flow_sequence, engine_type, engine_id, sampling_interval = struct.unpack('!HHIIIIIBB', data[:26])
             
             if version != 5:
                 logger.warning(f"Unsupported Netflow version: {version}")
                 return
 
-            # Process each flow record (48 bytes each)
-            offset = 24
+            # Process each flow record (44 bytes actual struct size)
+            offset = 26
             for _ in range(count):
-                flow_data = data[offset:offset+48]
-                if len(flow_data) < 48:
+                flow_data = data[offset:offset+44]
+                if len(flow_data) < 44:
                     break
 
-                # Unpack flow record
+                # Unpack flow record (Netflow v5 format - 44 bytes actual)  
+                # Adjusted format to match actual struct size requirement
+                flow_record = struct.unpack('!IIIHHIIIHHBBBBHHBBxx', flow_data)
+                
                 (src_addr, dst_addr, nexthop, input, output, packets, bytes,
-                 first, last, src_port, dst_port, pad1, tcp_flags, protocol,
-                 tos, src_as, dst_as, src_mask, dst_mask, pad2) = struct.unpack('!IIIIIIIIHHBBBBHHHH', flow_data)
+                 first, last, src_port, dst_port, tcp_flags, protocol,
+                 tos, src_as, dst_as, src_mask, dst_mask) = flow_record
 
                 # Convert IP addresses to string format
                 src_ip = socket.inet_ntoa(struct.pack('!I', src_addr))
@@ -92,7 +100,7 @@ class NetflowCollector:
 
                 # Save to database
                 self._save_flow(flow)
-                offset += 48
+                offset += 44
 
         except Exception as e:
             logger.error(f"Error processing flow record: {e}")

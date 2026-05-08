@@ -1,6 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, create_engine, Index
+from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
 Base = declarative_base()
@@ -9,12 +8,12 @@ class NetworkFlow(Base):
     __tablename__ = "network_flows"
 
     id = Column(Integer, primary_key=True, index=True)
-    src_ip = Column(String)
-    dst_ip = Column(String)
+    src_ip = Column(String, index=True)
+    dst_ip = Column(String, index=True)
     src_port = Column(Integer)
     dst_port = Column(Integer)
-    protocol = Column(Integer)
-    start_time = Column(DateTime)
+    protocol = Column(Integer, index=True)
+    start_time = Column(DateTime, index=True)
     end_time = Column(DateTime)
     packets = Column(Integer)
     bytes = Column(Integer)
@@ -26,12 +25,19 @@ class NetworkFlow(Base):
     dst_as = Column(Integer)
     src_mask = Column(Integer)
     dst_mask = Column(Integer)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
     # Anomaly detection fields
-    is_anomaly = Column(Integer, default=0)  # 0: normal, 1: anomaly
+    is_anomaly = Column(Integer, default=0, index=True)  # 0: normal, 1: anomaly
     anomaly_score = Column(Float, nullable=True)
     anomaly_type = Column(String, nullable=True)  # e.g., "unusual_port", "unusual_protocol"
+
+    # Composite indexes for common queries
+    __table_args__ = (
+        Index('idx_created_anomaly', 'created_at', 'is_anomaly'),
+        Index('idx_src_dst_ip', 'src_ip', 'dst_ip'),
+        Index('idx_time_range', 'start_time', 'end_time'),
+    )
 
 class AnomalyDetectionModel(Base):
     __tablename__ = "anomaly_detection_models"

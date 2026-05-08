@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Models (will be generated)
+models/*.pkl
+
+# Environment
+.env
+.env.local
+
+# Documentation
+*.md
+!README.md
+
+# CI/CD
+.github/
